@@ -1,14 +1,26 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const app = express();
+const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
-/* 
-car-menufactur
-Mdxp6N2KgwKAU1bG
 
-*/
+const verifyJWT = (req, res, next) => {
+  const authHeader = req.headers.auth;
+  if (!authHeader) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.token, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "forbidded access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4j1ot.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -18,12 +30,34 @@ const client = new MongoClient(uri, {
 const run = async () => {
   try {
     await client.connect();
+
+    // db connection
     const toolsCollection = client
       .db("mobile-menufacturer")
       .collection("tools");
     const reviewsCollection = client
       .db("mobile-menufacturer")
       .collection("reviews");
+    const userCollection = client.db("mobile-menufacturer").collection("users");
+
+    // authentication
+    app.put("/login", async (req, res) => {
+      const email = req.body;
+
+      const accessToken = jwt.sign({ email }, process.env.token, {
+        expiresIn: "2d",
+      });
+
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: email,
+      };
+      console.log(updateDoc);
+      const filter = { email };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      console.log({ result, accessToken });
+      res.send({ result, accessToken });
+    });
 
     app.get("/hometools", async (req, res) => {
       const query = {};
