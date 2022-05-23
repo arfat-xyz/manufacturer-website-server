@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
@@ -59,17 +59,28 @@ const run = async () => {
       res.send({ result, accessToken });
     });
 
+    // Home Tools data
     app.get("/hometools", async (req, res) => {
       const query = {};
       const cursor = toolsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    // home reviews get
     app.get("/homereviews", async (req, res) => {
       const query = {};
       const cursor = reviewsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    app.get("/purchase/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      console.log(query);
+      const tool = await toolsCollection.findOne(query);
+      res.send({ tool });
     });
   } finally {
     // await client.close();
