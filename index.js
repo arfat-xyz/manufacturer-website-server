@@ -11,6 +11,7 @@ const verifyJWT = (req, res, next) => {
   if (!authHeader) {
     return res.status(401).send({ message: "unauthorized access" });
   }
+
   const token = authHeader.split(" ")[1];
   jwt.verify(token, process.env.token, (err, decoded) => {
     if (err) {
@@ -75,6 +76,28 @@ const run = async () => {
       } else {
         res.status(403).send({ message: "forbidden access" });
       }
+    });
+
+    // delete row from my order
+    app.delete("/myordercancel/:id/:email", verifyJWT, async (req, res) => {
+      const verifyMail = req?.decoded?.email;
+      const id = req.params.id;
+      const email = req.params.email;
+      if (email === verifyMail) {
+        const query = { _id: ObjectId(id) };
+        const result = await ordersCollection.deleteOne(query);
+        res.send({ result });
+      } else {
+        res.send({ result: "forbidden" });
+      }
+    });
+
+    // fetching data for myorder
+    app.get("/myorder/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const orders = await ordersCollection.find(query).toArray();
+      res.send({ orders });
     });
 
     // Home Tools data
