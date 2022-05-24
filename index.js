@@ -41,22 +41,38 @@ const run = async () => {
     const userCollection = client.db("mobile-menufacturer").collection("users");
 
     // authentication
-    app.put("/login", async (req, res) => {
+    app.put("/login/:email", async (req, res) => {
       const email = req.body;
-
-      const accessToken = jwt.sign({ email }, process.env.token, {
-        expiresIn: "2d",
-      });
-
       const options = { upsert: true };
       const updateDoc = {
         $set: email,
       };
-      console.log(updateDoc);
-      const filter = { email };
+      const filter = email;
       const result = await userCollection.updateOne(filter, updateDoc, options);
-      console.log({ result, accessToken });
-      res.send({ result, accessToken });
+      const token = jwt.sign({ email }, process.env.token, {
+        expiresIn: "2d",
+      });
+      res.send({ result, token });
+    });
+
+    // admin authentication
+    app.get("/admin/:email", verifyJWT, async (req, res) => {
+      const email = req?.params?.email;
+      const decodedEmail = req?.decoded?.email;
+      console.log(decodedEmail.email);
+      if (email === decodedEmail.email) {
+        let role;
+        const query = { email };
+        const user = await userCollection.findOne(query);
+        if (user.role === "admin") {
+          role = "admin";
+        } else {
+          role = "user";
+        }
+        res.send({ role });
+      } else {
+        res.status(403).send({ message: "forbidden access" });
+      }
     });
 
     // Home Tools data
@@ -78,7 +94,6 @@ const run = async () => {
     app.get("/purchase/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
-      console.log(query);
       const tool = await toolsCollection.findOne(query);
       res.send({ tool });
     });
