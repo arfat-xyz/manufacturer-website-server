@@ -16,7 +16,7 @@ const verifyJWT = (req, res, next) => {
     if (err) {
       return res.status(403).send({ message: "forbidded access" });
     }
-    req.decoded = decoded;
+    req.decoded = decoded.email;
     next();
   });
 };
@@ -38,6 +38,9 @@ const run = async () => {
     const reviewsCollection = client
       .db("mobile-menufacturer")
       .collection("reviews");
+    const ordersCollection = client
+      .db("mobile-menufacturer")
+      .collection("orders");
     const userCollection = client.db("mobile-menufacturer").collection("users");
 
     // authentication
@@ -59,8 +62,7 @@ const run = async () => {
     app.get("/admin/:email", verifyJWT, async (req, res) => {
       const email = req?.params?.email;
       const decodedEmail = req?.decoded?.email;
-      console.log(decodedEmail.email);
-      if (email === decodedEmail.email) {
+      if (email === decodedEmail) {
         let role;
         const query = { email };
         const user = await userCollection.findOne(query);
@@ -96,6 +98,42 @@ const run = async () => {
       const query = { _id: ObjectId(id) };
       const tool = await toolsCollection.findOne(query);
       res.send({ tool });
+    });
+
+    app.put("/purchase/:id", verifyJWT, async (req, res) => {
+      const body = req?.body;
+      const mail = body?.email;
+      const id = req?.params?.id;
+
+      const query = { _id: ObjectId(id) };
+      const verifyMail = req?.decoded?.email;
+      if (verifyMail === mail) {
+        const doc = body;
+
+        // insert product in order db
+        const updateResult = await ordersCollection.insertOne(doc);
+
+        // finding tool that need to update
+        const tool = await toolsCollection.findOne(query);
+        newQuantity = tool.available - doc.quantity;
+
+        // updating tools available
+        const options = { upsert: true };
+        const filter = { _id: ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            available: newQuantity,
+          },
+        };
+        const quantityUpdateResult = await toolsCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send({ quantityUpdateResult });
+      } else {
+        res.send({ arfat: " arfat" });
+      }
     });
   } finally {
     // await client.close();
