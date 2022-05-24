@@ -46,12 +46,12 @@ const run = async () => {
 
     // authentication
     app.put("/login/:email", async (req, res) => {
-      const email = req.body;
+      const email = req.body.email;
       const options = { upsert: true };
       const updateDoc = {
-        $set: email,
+        $set: { email },
       };
-      const filter = email;
+      const filter = { email };
       const result = await userCollection.updateOne(filter, updateDoc, options);
       const token = jwt.sign({ email }, process.env.token, {
         expiresIn: "2d",
@@ -62,7 +62,7 @@ const run = async () => {
     // admin authentication
     app.get("/admin/:email", verifyJWT, async (req, res) => {
       const email = req?.params?.email;
-      const decodedEmail = req?.decoded?.email;
+      const decodedEmail = req?.decoded;
       if (email === decodedEmail) {
         let role;
         const query = { email };
@@ -78,9 +78,60 @@ const run = async () => {
       }
     });
 
+    // add a review
+    app.post("/addareview", verifyJWT, async (req, res) => {
+      const verifyMail = req?.decoded;
+      const review = req.body;
+      if (verifyMail === review?.email) {
+        const result = await reviewsCollection.insertOne(review);
+        res.send(result);
+      }
+    });
+
+    // get all data for user profile
+    app.get("/userupdate/:email", verifyJWT, async (req, res) => {
+      const verifyMail = req?.decoded;
+      const email = req.params.email;
+      if (verifyMail === email) {
+        const query = { email };
+        const user = await userCollection.findOne(query);
+        res.send({ user });
+      }
+    });
+
+    // update user profile
+    app.put("/userupdate/", verifyJWT, async (req, res) => {
+      const data = req.body;
+      const { education, email, linkedin, location, phone, user_name } = data;
+      const verifyMail = req?.decoded;
+      if (verifyMail === email) {
+        const query = { email };
+        const user = await userCollection.findOne(query);
+
+        const filter = { email };
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+            education,
+            email,
+            linkedin,
+            location,
+            phone,
+            user_name,
+          },
+        };
+        const result = await userCollection.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send({ result });
+      }
+    });
+
     // delete row from my order
     app.delete("/myordercancel/:id/:email", verifyJWT, async (req, res) => {
-      const verifyMail = req?.decoded?.email;
+      const verifyMail = req?.decoded;
       const id = req.params.id;
       const email = req.params.email;
       if (email === verifyMail) {
@@ -129,10 +180,9 @@ const run = async () => {
       const id = req?.params?.id;
 
       const query = { _id: ObjectId(id) };
-      const verifyMail = req?.decoded?.email;
+      const verifyMail = req?.decoded;
       if (verifyMail === mail) {
         const doc = body;
-
         // insert product in order db
         const updateResult = await ordersCollection.insertOne(doc);
 
