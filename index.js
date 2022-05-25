@@ -78,6 +78,19 @@ const run = async () => {
       }
     });
 
+    // delete a product
+    app.delete("/deleteproduct/:email/:id", verifyJWT, async (req, res) => {
+      const verifyMail = req?.decoded;
+      const email = req?.params.email;
+      const id = req.params.id;
+
+      if (verifyMail === email) {
+        const query = { _id: ObjectId(id) };
+        const result = await toolsCollection.deleteOne(query);
+        res.send(result);
+      }
+    });
+
     // manage all orders
     app.get("/allorders/:email", verifyJWT, async (req, res) => {
       const verifyMail = req?.decoded;
@@ -92,17 +105,14 @@ const run = async () => {
     // add a product
     app.post("/addaproduct", async (req, res) => {
       const product = req.body;
-      console.log(product);
       const doc = product;
       const result = await toolsCollection.insertOne(doc);
-      console.log(result);
       res.send(result);
     });
 
     // manage all products
     app.get("/allproducts", async (req, res) => {
       const products = await toolsCollection.find({}).toArray();
-      console.log(products);
       res.send(products);
     });
 
