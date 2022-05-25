@@ -78,6 +78,34 @@ const run = async () => {
       }
     });
 
+    // manage all orders
+    app.get("/allorders/:email", verifyJWT, async (req, res) => {
+      const verifyMail = req?.decoded;
+      const email = req.params.email;
+      if (verifyMail === email) {
+        const query = {};
+        const orders = await ordersCollection.find(query).toArray();
+        res.send(orders);
+      }
+    });
+
+    // add a product
+    app.post("/addaproduct", async (req, res) => {
+      const product = req.body;
+      console.log(product);
+      const doc = product;
+      const result = await toolsCollection.insertOne(doc);
+      console.log(result);
+      res.send(result);
+    });
+
+    // manage all products
+    app.get("/allproducts", async (req, res) => {
+      const products = await toolsCollection.find({}).toArray();
+      console.log(products);
+      res.send(products);
+    });
+
     // add a review
     app.post("/addareview", verifyJWT, async (req, res) => {
       const verifyMail = req?.decoded;
