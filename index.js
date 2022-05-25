@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
+const stripe = require("stripe")(process.env.stripe_token);
 
 const verifyJWT = (req, res, next) => {
   const authHeader = req.headers.auth;
@@ -43,6 +44,9 @@ const run = async () => {
       .db("mobile-menufacturer")
       .collection("orders");
     const userCollection = client.db("mobile-menufacturer").collection("users");
+    const paymentCollection = client
+      .db("mobile-menufacturer")
+      .collection("payments");
 
     // authentication
     app.put("/login/:email", async (req, res) => {
@@ -57,6 +61,49 @@ const run = async () => {
         expiresIn: "2d",
       });
       res.send({ result, token });
+    });
+
+    // pay using card
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+
+      const amount = price * 100;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // pay update data
+    app.patch("/pay/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      console.log(payment);
+      const filter = { _id: ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "paid",
+          transactionId: payment?.transactionId,
+        },
+      };
+      const update = await ordersCollection.updateOne(filter, updateDoc);
+      const result = await paymentCollection.insertOne(payment);
+      res.send(updateDoc);
+    });
+
+    // pay id to fetch for pay
+    app.get("/pay/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const tool = await ordersCollection.findOne(query);
+      res.send(tool);
     });
 
     // admin authentication
