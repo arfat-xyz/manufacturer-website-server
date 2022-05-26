@@ -63,6 +63,24 @@ const run = async () => {
       res.send({ result, token });
     });
 
+    // admin product deliverd
+    app.post("/delivered/:id", verifyJWT, async (req, res) => {
+      const _id = ObjectId(req.params.id);
+      const filter = { _id };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          status: "delivered",
+        },
+      };
+      const result = await ordersCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
     // pay using card
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
@@ -81,11 +99,30 @@ const run = async () => {
       });
     });
 
+    // make admin get all data
+    app.get("/allusers", verifyJWT, async (req, res) => {
+      const result = await userCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    app.post("/makeadmin/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const _id = ObjectId(id);
+      const filter = { _id };
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+
     // pay update data
     app.patch("/pay/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const payment = req.body;
-      console.log(payment);
       const filter = { _id: ObjectId(id) };
       const updateDoc = {
         $set: {
@@ -95,7 +132,7 @@ const run = async () => {
       };
       const update = await ordersCollection.updateOne(filter, updateDoc);
       const result = await paymentCollection.insertOne(payment);
-      res.send(updateDoc);
+      res.send(update);
     });
 
     // pay id to fetch for pay
